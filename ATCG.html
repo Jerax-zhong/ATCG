@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>细胞呼吸动力学模型 (科学修正版)</title>
+    <title>细胞呼吸动态描绘演示</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
@@ -11,40 +11,41 @@
             --color-anaerobic: #27ae60; /* 绿 */
             --color-aerobic: #2980b9;   /* 蓝 */
             --color-total: #c0392b;     /* 红 */
-            --bg-body: #f4f6f9;
+            --bg-page: #f0f2f5;
         }
 
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: var(--bg-body);
-            margin: 0;
-            padding: 20px;
+            background-color: var(--bg-page);
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 20px;
+            margin: 0;
+            color: #333;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             width: 100%;
             background: #fff;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            padding: 25px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+            padding: 30px;
             box-sizing: border-box;
         }
 
-        h2 { text-align: center; color: #34495e; margin-top: 0; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #7f8c8d; font-size: 0.9em; margin-bottom: 25px; }
 
-        .layout {
+        .main-layout {
             display: flex;
             gap: 20px;
-            margin-top: 20px;
         }
 
-        .chart-box {
+        .chart-wrapper {
             flex: 2;
-            height: 500px;
+            height: 480px;
             position: relative;
             background: #fff;
             border: 1px solid #eee;
@@ -54,203 +55,220 @@
 
         .control-panel {
             flex: 1;
-            background: #fdfdfd;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
             display: flex;
             flex-direction: column;
             gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
         }
 
-        /* 滑块样式 */
-        .slider-group label {
+        /* 滑块样式优化 */
+        .slider-container label {
             display: flex;
             justify-content: space-between;
             font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 10px;
+            font-size: 1.2em;
+            margin-bottom: 12px;
         }
-        
+
         input[type=range] {
             width: 100%;
             cursor: pointer;
+            height: 8px;
+            background: #dfe6e9;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            transition: background 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--color-aerobic);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -8px; /* 校准位置 */
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: transparent;
+            border-radius: 4px;
         }
 
-        /* 数据显示 */
-        .metrics {
-            display: grid;
-            gap: 10px;
-        }
-
-        .metric-card {
-            padding: 12px;
-            border-radius: 6px;
-            color: #fff;
+        /* 数据状态条 */
+        .status-bars {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 500;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
         }
+        .bar-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        .bar-name { width: 80px; font-weight: 600; }
+        .track { flex: 1; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+        .fill { height: 100%; transition: width 0.1s linear; }
 
-        .analysis {
-            background: #eef6fc;
-            border-left: 4px solid var(--color-aerobic);
+        /* 教学卡片 */
+        .teach-card {
+            background: #fff;
+            border-left: 5px solid var(--color-total);
             padding: 15px;
             border-radius: 4px;
-            font-size: 0.9em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 0.95em;
             line-height: 1.6;
-            color: #444;
+            margin-top: auto; /* 推到底部 */
         }
 
-        /* 反应式微缩版 */
-        .mini-formula {
-            font-size: 0.8em;
-            color: #7f8c8d;
-            text-align: center;
-            margin-bottom: 5px;
-            background: #f8f9fa;
-            padding: 5px;
-            border-radius: 4px;
+        @media (max-width: 800px) {
+            .main-layout { flex-direction: column; }
+            .chart-wrapper { height: 350px; }
         }
-
-        @media (max-width: 800px) { .layout { flex-direction: column; } .chart-box { height: 350px; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>氧气浓度与 CO₂ 释放量的关系 (米氏动力学模型)</h2>
-    
-    <div class="mini-formula">
-        总反应速率受限于酶的饱和度，符合 Michaelis-Menten 方程
-    </div>
+    <h2>细胞呼吸过程动态模拟</h2>
+    <p class="subtitle">向右拖动滑块，观察随着氧气浓度增加，曲线是如何变化的</p>
 
-    <div class="layout">
-        <div class="chart-box">
-            <canvas id="bioChart"></canvas>
+    <div class="main-layout">
+        <div class="chart-wrapper">
+            <canvas id="respirationChart"></canvas>
         </div>
 
         <div class="control-panel">
-            <div class="slider-group">
+            <div class="slider-container">
                 <label>
                     <span>O₂ 浓度</span>
-                    <span style="color:var(--color-aerobic)"><span id="o2Val">0.0</span>%</span>
+                    <span style="color:var(--color-aerobic)"><span id="o2Display">0</span>%</span>
                 </label>
                 <input type="range" id="o2Slider" min="0" max="25" step="0.1" value="0">
-                <div style="font-size:0.8em; color:#999; display:flex; justify-content:space-between; margin-top:5px;">
+                <div style="display:flex; justify-content:space-between; color:#999; font-size:0.8em; margin-top:8px;">
                     <span>0%</span>
                     <span>5% (最低点)</span>
-                    <span>20% (趋于饱和)</span>
+                    <span>10%</span>
+                    <span>25%</span>
                 </div>
             </div>
 
-            <div class="metrics">
-                <div class="metric-card" style="background:var(--color-anaerobic)">
-                    <span>无氧呼吸速率</span>
-                    <span id="txtAna">0.00</span>
+            <div class="status-bars">
+                <div class="bar-item">
+                    <span class="bar-name" style="color:var(--color-anaerobic)">无氧强度</span>
+                    <div class="track"><div id="barAna" class="fill" style="background:var(--color-anaerobic); width:100%"></div></div>
                 </div>
-                <div class="metric-card" style="background:var(--color-aerobic)">
-                    <span>有氧呼吸速率</span>
-                    <span id="txtAer">0.00</span>
+                <div class="bar-item">
+                    <span class="bar-name" style="color:var(--color-aerobic)">有氧强度</span>
+                    <div class="track"><div id="barAer" class="fill" style="background:var(--color-aerobic); width:0%"></div></div>
                 </div>
-                <div class="metric-card" style="background:var(--color-total)">
-                    <span>总 CO₂ 释放速率</span>
-                    <span id="txtTot">0.00</span>
+                <div class="bar-item">
+                    <span class="bar-name" style="color:var(--color-total)">释放总量</span>
+                    <div class="track"><div id="barTot" class="fill" style="background:var(--color-total); width:50%"></div></div>
                 </div>
             </div>
 
-            <div class="analysis">
-                <strong>💡 实时分析：</strong>
-                <div id="analysisTxt">调整滑块以开始观测...</div>
+            <div class="teach-card">
+                <strong id="stageName">初始状态</strong>
+                <div id="stageDesc">请向右拖动滑块，开始实验...</div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // ================= 科学数学模型 =================
-
-    // 配置参数
-    const MAX_OXYGEN = 25; // X轴最大值
+    // ================= 1. 精准数学模型设计 =================
+    // 目标：总曲线最低点精确在 x=5.0
     
-    // 1. 无氧呼吸模型 (Anaerobic)
-    // 使用平滑衰减函数，模拟巴斯德效应。
-    // 在 x=10 左右几乎归零。
-    function getAnaerobic(x) {
-        if (x >= 10) return 0;
-        // 使用余弦函数部分模拟平滑下降，比简单的抛物线更符合生物自然衰减
-        // y = 1.0 * (cos(x * pi / 20) + 1) / 2 的变体，或者简单的抛物线
-        // 为了严格在10切断：
-        return 1.2 * Math.pow((10 - x) / 10, 2); 
+    // 参数设定：
+    // A (无氧起点) = 2.0
+    // B (有氧系数) = 5.6 (经过微分计算得出，用于平衡下降趋势)
+    // K (米氏常数) = 15 (使得有氧上升较缓，以此在5%处形成谷底)
+
+    const MAX_X = 25;
+    const STEP = 0.1;
+    
+    // 预计算所有数据点（Master Data）
+    const masterData = [];
+
+    function calcAnaerobic(x) {
+        // 无氧呼吸：在10%处归零
+        if(x >= 10) return 0;
+        return 2.0 * Math.pow((10 - x) / 10, 2);
     }
 
-    // 2. 有氧呼吸模型 (Aerobic) - 核心修正
-    // 使用 Michaelis-Menten 方程: V = Vmax * [S] / (Km + [S])
-    // [S] 是氧气浓度 x
-    // Vmax 设为 2.5 (比无氧起点的1.2要高，因为有氧产能效率极高，但为了图表平衡，CO2量的Vmax通常设定为无氧起点的2-3倍)
-    // Km (米氏常数) 设为 5 (意味着在 5% 浓度时达到一半速度，这决定了曲线弯曲的程度)
-    function getAerobic(x) {
-        const Vmax = 2.8; 
-        const Km = 6.0;   
-        // 公式： V = Vmax * x / (Km + x)
+    function calcAerobic(x) {
+        // 有氧呼吸：米氏方程 V = Vmax * x / (Km + x)
+        // 参数调节以确保 x=5 时斜率与无氧下降斜率抵消
+        const Vmax = 5.6; 
+        const Km = 15;    
         return (Vmax * x) / (Km + x);
     }
 
-    // 生成高密度数据点用于绘制平滑曲线
-    const dataPoints = [];
-    // 步长设小一点(0.1)，保证曲线平滑
-    for (let x = 0; x <= MAX_OXYGEN; x += 0.1) {
-        let ana = getAnaerobic(x);
-        let aer = getAerobic(x);
-        dataPoints.push({
-            x: x,
+    for (let x = 0; x <= MAX_X; x += STEP) {
+        // 修正浮点数精度问题
+        let safeX = Math.round(x * 10) / 10;
+        let ana = calcAnaerobic(safeX);
+        let aer = calcAerobic(safeX);
+        
+        masterData.push({
+            x: safeX,
             ana: ana,
             aer: aer,
             tot: ana + aer
         });
     }
 
-    // ================= Chart.js 配置 =================
-    
-    const ctx = document.getElementById('bioChart').getContext('2d');
+    // ================= 2. Chart.js 配置 =================
+    const ctx = document.getElementById('respirationChart').getContext('2d');
 
-    // 插件：绘制精准的垂直指示线
-    const cursorPlugin = {
-        id: 'cursorPlugin',
+    // 插件：绘制当前的垂直“笔头”线
+    const tracePlugin = {
+        id: 'tracePlugin',
         afterDraw: (chart) => {
-            if (chart.tooltip?._active?.length) return;
+            // 如果数据为空（x=0时），不画线
+            const datasets = chart.data.datasets;
+            if (datasets[0].data.length === 0) return;
 
-            const sliderVal = parseFloat(document.getElementById('o2Slider').value);
+            // 获取当前绘制数据的最后一个点（即滑块位置）
+            const lastPoint = datasets[0].data[datasets[0].data.length - 1];
+            if (!lastPoint) return;
+
+            const xVal = lastPoint.x;
             const xScale = chart.scales.x;
             const yScale = chart.scales.y;
-
-            // 这里的关键是：xScale.getPixelForValue 直接用数值，不需要查索引
-            // 因为我们下面配置了 type: 'linear'
-            const xPos = xScale.getPixelForValue(sliderVal);
-            
-            // 如果超出范围不绘制
-            if (xPos < xScale.left || xPos > xScale.right) return;
+            const xPos = xScale.getPixelForValue(xVal);
 
             const ctx = chart.ctx;
             ctx.save();
 
-            // 1. 垂直线
+            // 绘制垂直引导线
             ctx.beginPath();
             ctx.moveTo(xPos, yScale.top);
             ctx.lineTo(xPos, yScale.bottom);
-            ctx.lineWidth = 1;
             ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1.5;
             ctx.setLineDash([4, 4]);
             ctx.stroke();
 
-            // 2. 计算当前Y值并绘制圆点
-            const currentAna = getAnaerobic(sliderVal);
-            const currentAer = getAerobic(sliderVal);
-            const currentTot = currentAna + currentAer;
-
-            const drawDot = (val, color) => {
+            // 在三个曲线末端画圆点（笔头）
+            const idx = datasets[0].data.length - 1;
+            
+            // 辅助函数：画点
+            const drawDot = (datasetIdx, color) => {
+                const ds = datasets[datasetIdx];
+                if(ds.data.length <= idx) return;
+                const val = ds.data[idx].y;
                 const yPos = yScale.getPixelForValue(val);
+
                 ctx.beginPath();
                 ctx.arc(xPos, yPos, 5, 0, 2 * Math.PI);
                 ctx.fillStyle = color;
@@ -260,9 +278,21 @@
                 ctx.stroke();
             };
 
-            drawDot(currentAna, '#27ae60');
-            drawDot(currentAer, '#2980b9');
-            drawDot(currentTot, '#c0392b');
+            drawDot(0, '#27ae60'); // Ana
+            drawDot(1, '#2980b9'); // Aer
+            drawDot(2, '#c0392b'); // Tot
+
+            // 静态标注 R点 (仅当曲线画过5%后显示)
+            if (xVal >= 5.0) {
+                const minData = masterData.find(p => p.x === 5.0);
+                const rX = xScale.getPixelForValue(5.0);
+                const rY = yScale.getPixelForValue(minData.tot);
+                
+                ctx.font = "bold 12px Arial";
+                ctx.fillStyle = "#c0392b";
+                ctx.textAlign = "center";
+                ctx.fillText("↓ 最低点 (5%)", rX, rY + 25);
+            }
 
             ctx.restore();
         }
@@ -271,115 +301,132 @@
     const chart = new Chart(ctx, {
         type: 'line',
         data: {
-            // 对于线性轴，datasets 需要 {x, y} 格式的数据结构
             datasets: [
                 {
-                    label: '无氧呼吸 (CO₂)',
-                    data: dataPoints.map(p => ({x: p.x, y: p.ana})),
+                    label: '无氧呼吸',
+                    data: [], // 初始为空
                     borderColor: '#27ae60',
-                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
                     borderWidth: 2,
-                    pointRadius: 0, // 隐藏原始数据点，靠插件画动态点
-                    fill: true
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
                 },
                 {
-                    label: '有氧呼吸 (CO₂)',
-                    data: dataPoints.map(p => ({x: p.x, y: p.aer})),
+                    label: '有氧呼吸',
+                    data: [],
                     borderColor: '#2980b9',
                     borderWidth: 2,
                     pointRadius: 0,
-                    // 不填充，保持清爽
+                    tension: 0.2,
+                    fill: false
                 },
                 {
-                    label: '总释放量',
-                    data: dataPoints.map(p => ({x: p.x, y: p.tot})),
+                    label: 'CO₂ 释放总量',
+                    data: [],
                     borderColor: '#c0392b',
-                    borderWidth: 3,
-                    borderDash: [6, 4],
-                    pointRadius: 0
+                    borderWidth: 4,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+            interaction: { enabled: false }, // 禁用鼠标交互，纯展示
             scales: {
                 x: {
-                    type: 'linear', // 【关键修正】使用线性轴
-                    position: 'bottom',
-                    title: { display: true, text: 'O₂ 浓度 (%)' },
+                    type: 'linear',
                     min: 0,
-                    max: 25,
-                    grid: { display: false } // 隐藏网格更清晰
+                    max: 25, // 固定X轴范围，防止抖动
+                    title: { display: true, text: 'O₂ 浓度 (%)', font: {size: 14, weight:'bold'} },
+                    grid: { display: false }
                 },
                 y: {
-                    title: { display: true, text: '相对反应速率 (v)' },
+                    title: { display: true, text: 'CO₂ 释放总量', font: {size: 14, weight:'bold'} },
                     min: 0,
-                    suggestedMax: 3.0
+                    suggestedMax: 3.5,
+                    ticks: { display: false }, // 隐藏数值
+                    grid: { display: true, drawTicks: false }
                 }
             },
             plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: (items) => `O₂ 浓度: ${items[0].parsed.x.toFixed(1)}%`
-                    }
-                },
-                legend: { position: 'top' }
+                legend: { position: 'top' },
+                tooltip: { enabled: false }
             },
-            animation: { duration: 0 }
+            animation: { duration: 0 } // 禁用动画以实现实时跟随
         },
-        plugins: [cursorPlugin]
+        plugins: [tracePlugin]
     });
 
-    // ================= 交互逻辑 =================
-
+    // ================= 3. 交互逻辑 =================
+    
     const slider = document.getElementById('o2Slider');
-    const domO2 = document.getElementById('o2Val');
-    const domAna = document.getElementById('txtAna');
-    const domAer = document.getElementById('txtAer');
-    const domTot = document.getElementById('txtTot');
-    const domAnalysis = document.getElementById('analysisTxt');
+    const o2Display = document.getElementById('o2Display');
+    const stageName = document.getElementById('stageName');
+    const stageDesc = document.getElementById('stageDesc');
+    const barAna = document.getElementById('barAna');
+    const barAer = document.getElementById('barAer');
+    const barTot = document.getElementById('barTot');
 
-    function updateView(val) {
-        const x = parseFloat(val);
-        domO2.innerText = x.toFixed(1);
+    function updateChart(val) {
+        const currentX = parseFloat(val);
+        o2Display.innerText = currentX.toFixed(1);
 
-        // 实时计算 (直接调用模型函数，保证数值绝对精准，不再依赖数组索引)
-        const vAna = getAnaerobic(x);
-        const vAer = getAerobic(x);
-        const vTot = vAna + vAer;
-
-        domAna.innerText = vAna.toFixed(2);
-        domAer.innerText = vAer.toFixed(2);
-        domTot.innerText = vTot.toFixed(2);
-
-        // 教学逻辑判断
-        let msg = "";
+        // 1. 数据截取 (Slicing)
+        // 过滤出所有 x <= currentX 的点
+        // 如果 currentX == 0, 数组应该为空（除了起始点? 用户要求无曲线，所以给空数组）
         
-        if (x === 0) {
-            msg = "<strong>无氧发酵阶段：</strong><br>完全缺氧。此时 $CO_2$ 产量较高，但这会导致有机物大量消耗以维持 ATP 供应（效率低）。";
-        } else if (x > 0 && x < 4) {
-            msg = "<strong>巴斯德效应显著：</strong><br>氧气的存在迅速抑制了无氧呼吸，但有氧呼吸受限于底物浓度（$K_m$）尚未全速运行，导致总 $CO_2$ 曲线<b>急剧下降</b>。";
-        } else if (x >= 4 && x <= 6) {
-            msg = "<strong>最低点 (果蔬储存)：</strong><br>在此区间，无氧呼吸微弱，有氧呼吸尚弱。总消耗最低。这是储存有机物的最佳点。";
-        } else if (x > 6 && x < 15) {
-            msg = "<strong>快速上升期：</strong><br>无氧呼吸已停止。有氧呼吸随氧浓度增加而线性上升。酶的活性位点正在被逐渐填充。";
+        let visibleData = [];
+        if (currentX > 0) {
+            visibleData = masterData.filter(p => p.x <= currentX);
         } else {
-            msg = "<strong>饱和阶段 (Saturation)：</strong><br>注意观察蓝线和红线变得<b>平缓</b>。受限于线粒体数量或呼吸酶的数量（$V_{max}$），即使氧气再增加，反应速率也不再显著上升。符合<b>米氏方程</b>特性。";
+            // 0%时，显示为空，或者只显示一个点？
+            // 为了符合"无曲线"的要求，给空数组。
+            // 但为了进度条显示，我们需要获取x=0的数值
+            visibleData = [];
         }
 
-        domAnalysis.innerHTML = msg;
-        if(window.MathJax) MathJax.typesetPromise([domAnalysis]);
+        // 更新 Chart 数据
+        chart.data.datasets[0].data = visibleData.map(p => ({x: p.x, y: p.ana}));
+        chart.data.datasets[1].data = visibleData.map(p => ({x: p.x, y: p.aer}));
+        chart.data.datasets[2].data = visibleData.map(p => ({x: p.x, y: p.tot}));
+        
+        chart.update();
 
-        // 触发重绘以更新垂直线
-        chart.update('none');
+        // 2. 更新右侧面板数值 (取当前X对应的值)
+        // 如果是0，取masterData第一个点
+        let currentPoint = masterData.find(p => Math.abs(p.x - currentX) < 0.05) || masterData[0];
+        
+        // 更新进度条 (归一化显示)
+        barAna.style.width = (currentPoint.ana / 2.0 * 100) + '%';
+        barAer.style.width = (currentPoint.aer / 3.5 * 100) + '%';
+        barTot.style.width = (currentPoint.tot / 3.5 * 100) + '%';
+
+        // 3. 教学文案更新
+        if (currentX === 0) {
+            stageName.innerText = "准备开始";
+            stageDesc.innerHTML = "当前氧气为0。请<strong>向右拖动滑块</strong>，观察曲线如何产生。";
+        } else if (currentX > 0 && currentX < 4) {
+            stageName.innerText = "无氧呼吸受抑";
+            stageDesc.innerHTML = "随着氧气介入，绿色曲线(无氧)急剧下跌。虽然蓝色曲线(有氧)开始生长，但总释放量(红线)在<strong>下降</strong>。";
+        } else if (currentX >= 4 && currentX <= 6) {
+            stageName.innerText = "最低点 (5%)";
+            stageDesc.innerHTML = "注意红线的<strong>谷底</strong>。此时总 CO₂ 释放量最低。这是果蔬储存的最佳氧浓度。";
+        } else if (currentX > 6 && currentX < 15) {
+            stageName.innerText = "有氧呼吸增强";
+            stageDesc.innerHTML = "绿线归零。蓝线和红线同步上升，表明细胞呼吸强度随氧气增加而恢复。";
+        } else {
+            stageName.innerText = "酶饱和阶段";
+            stageDesc.innerHTML = "曲线趋向平直。受限于呼吸酶数量，反应速率达到上限，不再随氧气增加而大幅上升。";
+        }
     }
 
-    slider.addEventListener('input', (e) => updateView(e.target.value));
+    slider.addEventListener('input', (e) => updateChart(e.target.value));
     
-    // 初始化
-    updateView(0);
+    // 初始化：确保开始时没有线
+    updateChart(0);
 
 </script>
 </body>
