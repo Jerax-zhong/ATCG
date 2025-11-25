@@ -242,7 +242,7 @@
         .btn-check:active { background: var(--primary-dark); transform: translateY(1px); }
         .btn-reset { background: #fff; border: 1px solid #cbd5e1; color: #64748b; }
         
-        .feedback { display: none; margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 0.9rem; border-left: 5px solid transparent; line-height: 1.6;}
+        .feedback { display: none; margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 0.9rem; border-left: 5px solid透明; line-height: 1.6;}
         .feedback.error { background: #fef2f2; color: #991b1b; border-left-color: var(--danger); }
         .feedback.success { background: #ecfdf5; color: #065f46; border-left-color: var(--success); }
     </style>
@@ -427,6 +427,7 @@
         resetFeedback(setupId);
     }
 
+    // ★★★ 此处已按你的要求修改导管：只去掉乙装置酵母瓶的长导管 ★★★
     function renderFlask(setupId, index, type) {
         const slot = document.querySelector(`.slot[data-setup="${setupId}"][data-index="${index}"]`);
         const placeholder = slot.querySelector('.content-placeholder');
@@ -437,17 +438,29 @@
         }
 
         const config = itemConfig[type];
-        
-        let tubeHtml = '<div class="glass-tube tube-vertical-in"></div>';
-        
+
+        let tubeHtml = '';
+
+        // 判断：无氧呼吸(装置B) 的 1号位，且内容是酵母菌液
+        const isAnaerobicYeastFlask = (setupId === 'B' && index === 0 && type === 'yeast');
+
+        // 只有在“不是乙装置酵母1号瓶”时，才渲染长导管
+        if (!isAnaerobicYeastFlask) {
+            tubeHtml += '<div class="glass-tube tube-vertical-in"></div>';
+        }
+
+        // 水平连接管，逻辑与原来一致
         if (setupId === 'A' && index === 0) {
+            // 甲装置 1号瓶：连气泵
             tubeHtml += '<div class="glass-tube tube-arm-left tube-connect-pump"></div>';
         } else if (index > 0) {
+            // 其他位置：与前一个瓶连接
             if (!(setupId === 'B' && index === 0)) {
                 tubeHtml += '<div class="glass-tube tube-arm-left tube-connect-prev"></div>';
             }
         }
 
+        // 短导管保留（乙装置酵母瓶只剩这一根 + 连接管）
         tubeHtml += '<div class="glass-tube tube-vertical-out"></div>';
         tubeHtml += '<div class="bubble"></div>';
 
