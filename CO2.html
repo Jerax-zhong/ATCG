@@ -2,623 +2,424 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>细胞呼吸原理 - 智能反馈版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>细胞呼吸 CO2 释放曲线交互演示</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4338ca;
-            --success: #10b981;
-            --danger: #ef4444;
-            --bg: #f1f5f9;
-            --glass-border: #475569;
-            --tube-color: rgba(255, 255, 255, 0.8);
-            --tube-border: #94a3b8;
+            --color-anaerobic: #27ae60; /* 绿色 - 无氧 */
+            --color-aerobic: #2980b9;   /* 蓝色 - 有氧 */
+            --color-total: #c0392b;     /* 红色 - 总量 */
+            --bg-page: #f4f6f9;
+            --card-bg: #ffffff;
         }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg);
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-page);
             margin: 0;
             padding: 20px;
-            padding-bottom: 220px; /* 底部空间 */
-            color: #333;
-            overscroll-behavior: none;
-        }
-
-        .container { max-width: 1000px; margin: 0 auto; }
-
-        header { text-align: center; margin-bottom: 25px; }
-        h1 { font-size: 1.6rem; color: #1e293b; margin: 5px 0; font-weight: 800; }
-        .intro { font-size: 0.95rem; color: #64748b; background: #e0e7ff; padding: 12px 20px; border-radius: 10px; display: inline-block;}
-
-        /* 实验台布局 */
-        .lab-bench {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 25px;
-        }
-        @media (min-width: 768px) { .lab-bench { grid-template-columns: 1fr 1fr; } }
-
-        .experiment-card {
-            background: #fff;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
-            border: 1px solid #fff;
-        }
-
-        .card-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9;
-        }
-        .card-title { font-weight: 800; font-size: 1.2rem; color: #334155; }
-        .status-badge { font-size: 0.85rem; padding: 4px 12px; border-radius: 20px; background: #f1f5f9; color: #64748b; font-weight: 600;}
-
-        /* 装置区域 */
-        .setup-area {
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            gap: 0; 
-            height: 190px;
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 10px 20px;
-            position: relative;
-            border: 2px solid #e2e8f0;
-            overflow: hidden;
-        }
-
-        /* 气泵图标 */
-        .air-pump {
-            position: absolute;
-            top: 40px;
-            left: 10px;
-            background: #e2e8f0;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            color: #475569;
-            font-weight: bold;
-            border: 2px solid #cbd5e1;
-            z-index: 5;
-        }
-        .air-pump::after {
-            content: ''; position: absolute; right: -10px; top: 50%;
-            margin-top: -3px; width: 10px; height: 6px; background: #94a3b8;
-        }
-
-        /* 插槽 */
-        .slot {
-            width: 110px;
-            height: 160px;
-            border: 2px dashed #cbd5e1;
-            border-right: none;
-            position: relative;
-            transition: all 0.2s;
-            background: rgba(255,255,255,0.4);
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
             align-items: center;
-            z-index: 10;
-        }
-        .slot:last-child { border-right: 2px dashed #cbd5e1; border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
-        .slot:first-of-type { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
-
-        .slot.drag-over {
-            background: #e0e7ff;
-            border-color: var(--primary);
-            border-style: solid;
-            border-width: 2px;
-            z-index: 20;
-            box-shadow: inset 0 0 15px rgba(99, 102, 241, 0.2);
+            color: #333;
         }
 
-        .slot-label {
-            position: absolute; top: 8px; width: 100%; text-align: center;
-            font-size: 0.75rem; color: #94a3b8; pointer-events: none; font-weight: 600;
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            padding: 30px;
+            box-sizing: border-box;
         }
 
-        .content-placeholder {
-            width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+        h2 { text-align: center; color: #2c3e50; margin-top: 0; }
+        p.subtitle { text-align: center; color: #7f8c8d; font-size: 0.95em; margin-bottom: 30px; }
+
+        .layout-grid {
+            display: flex;
+            gap: 30px;
+        }
+
+        .chart-section {
+            flex: 2;
+            min-width: 0; /* 防止Chartjs溢出 */
+            height: 480px;
             position: relative;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
         }
 
-        /* === 锥形瓶视觉 === */
-        .flask-wrapper {
-            width: 80px; height: 100px;
-            position: relative;
-            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1));
-            z-index: 10; margin-bottom: 5px;
+        .control-section {
+            flex: 1;
+            min-width: 280px;
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
         }
 
-        .flask-body {
-            width: 100%; height: 100%;
-            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
-            clip-path: path('M 25 0 L 55 0 L 75 100 L 5 100 Z');
-            border: 1px solid rgba(255,255,255,0.8);
-            position: relative; overflow: hidden;
-        }
-        
-        .flask-rim {
-            position: absolute; top: 0; left: 25px; width: 30px; height: 4px;
-            background: rgba(255,255,255,0.8); border-bottom: 1px solid #cbd5e1; z-index: 15;
+        /* 滑块控件 */
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 12px;
         }
 
-        /* 液体 */
-        .liquid {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 55%; 
-            transition: background 0.5s, opacity 0.5s;
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            height: 8px;
+            background: #dcdde1;
+            border-radius: 4px;
+            -webkit-appearance: none;
         }
-        .liquid.naoh { background: #bfdbfe; }
-        .liquid.yeast { background: #fef08a; }
-        .liquid.lime { background: #f8fafc; opacity: 0.5; }
-        .liquid.lime.cloudy { background: #cbd5e1; opacity: 0.95; }
-
-        /* === 连通导管系统 === */
-        .tubes-system {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; opacity: 0; transition: opacity 0.5s; z-index: 5;
-        }
-        .tubes-system.visible { opacity: 1; }
-
-        .stopper {
-            position: absolute; top: -5px; left: 28px; width: 24px; height: 12px;
-            background: #475569; border-radius: 2px; z-index: 12;
-            box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--color-aerobic);
+            border: 3px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -8px;
         }
 
-        .glass-tube {
-            position: absolute; background: var(--tube-color); border: 1px solid var(--tube-border); z-index: 11;
+        /* 状态进度条 */
+        .bars-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        .tube-vertical-in { top: -15px; left: 33px; width: 5px; height: 105px; border-bottom: none; border-top: none; }
-        .tube-vertical-out { top: -15px; left: 43px; width: 5px; height: 45px; border-bottom: none; border-top: none; }
-        .tube-arm-left { top: -15px; height: 5px; background: var(--tube-color); border-top: 1px solid var(--tube-border); border-bottom: 1px solid var(--tube-border); z-index: 11; }
-        .tube-connect-pump { left: -50px; width: 88px; }
-        .tube-connect-prev { left: -65px; width: 103px; }
+        .bar-row { display: flex; align-items: center; font-size: 0.9em; }
+        .bar-label { width: 85px; font-weight: 600; }
+        .bar-track { flex: 1; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.05s linear; }
 
-        /* 气泡 */
-        @keyframes bubble-rise {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-40px); opacity: 0; }
+        /* 教学卡片 */
+        .info-box {
+            background: #fff;
+            border-left: 5px solid var(--color-total);
+            padding: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-top: auto;
         }
-        .bubble {
-            position: absolute; bottom: 15px; left: 34px; width: 6px; height: 6px;
-            background: rgba(255,255,255,0.9); border-radius: 50%; border: 1px solid #94a3b8;
-            animation: bubble-rise 1.5s infinite; display: none;
-        }
-        .tubes-system.visible .bubble { display: block; }
+        .info-title { display: block; font-weight: bold; margin-bottom: 5px; color: #2c3e50; }
 
-        /* 瓶底文字 */
-        .flask-label {
-            font-size: 0.8rem; font-weight: 700; color: #1e293b;
-            margin-top: 8px; text-align: center; white-space: nowrap; text-shadow: none;
+        @media (max-width: 800px) {
+            .layout-grid { flex-direction: column; }
+            .chart-section { height: 350px; }
         }
-
-        /* === 底部物品栏 === */
-        .inventory {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
-            padding: 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.08); z-index: 100;
-            border-top-left-radius: 25px; border-top-right-radius: 25px;
-            border-top: 1px solid rgba(255,255,255,0.5);
-        }
-        .inv-title { text-align: center; color: #64748b; font-size: 0.9rem; margin-bottom: 15px; font-weight: 700; letter-spacing: 1px;}
-        
-        .draggable-container { display: flex; justify-content: center; gap: 25px; flex-wrap: wrap; }
-
-        .draggable-item {
-            width: 100px; height: 110px; background: #fff; border: 1px solid #e2e8f0;
-            border-radius: 16px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: grab;
-            user-select: none; touch-action: none; position: relative;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: transform 0.1s;
-        }
-        .draggable-item:active { cursor: grabbing; transform: scale(0.95); border-color: var(--primary); }
-
-        .icon-flask {
-            width: 40px; height: 55px; background: linear-gradient(135deg, #fff 0%, #f1f5f9 100%);
-            clip-path: path('M 12 0 L 28 0 L 40 55 L 0 55 Z');
-            border: 1px solid #cbd5e1; position: relative; margin-bottom: 8px;
-        }
-        .icon-liquid { position: absolute; bottom: 0; width: 100%; height: 55%; }
-        .icon-text { font-size: 0.8rem; color: #334155; font-weight: bold; text-align: center;}
-
-        .drag-mirror {
-            position: fixed; pointer-events: none; z-index: 9999; width: 100px; height: 110px;
-            background: rgba(255,255,255,0.95); border: 2px solid var(--primary);
-            border-radius: 16px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; box-shadow: 0 15px 35px rgba(99, 102, 241, 0.3);
-            opacity: 0.95; transform: scale(1.1);
-        }
-
-        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: 700; margin-top: 15px; font-size: 1rem; letter-spacing: 0.5px;}
-        .btn-check { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3); }
-        .btn-check:active { background: var(--primary-dark); transform: translateY(1px); }
-        .btn-reset { background: #fff; border: 1px solid #cbd5e1; color: #64748b; }
-        
-        .feedback { display: none; margin-top: 15px; padding: 15px; border-radius: 12px; font-size: 0.9rem; border-left: 5px solid透明; line-height: 1.6;}
-        .feedback.error { background: #fef2f2; color: #991b1b; border-left-color: var(--danger); }
-        .feedback.success { background: #ecfdf5; color: #065f46; border-left-color: var(--success); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <h1>探究酵母菌细胞呼吸的方式</h1>
-        <div class="intro">
-            请将底部的试剂瓶拖拽至上方装置中，完成<strong>有氧</strong>与<strong>无氧</strong>呼吸的对比实验。
-        </div>
-    </header>
+    <h2>细胞呼吸过程动态模拟</h2>
+    <p class="subtitle">拖动下方滑块，观察氧气浓度如何影响 CO₂ 释放总量</p>
 
-    <div class="lab-bench">
-        <div class="experiment-card" id="card-A">
-            <div class="card-header">
-                <div class="card-title">装置甲：有氧呼吸</div>
-                <div class="status-badge" id="status-A">待组装</div>
-            </div>
-            <div class="setup-area">
-                <div class="air-pump">气泵</div>
-                <div class="slot" data-setup="A" data-index="0">
-                    <div class="slot-label">1号</div>
-                    <div class="content-placeholder"></div>
-                </div>
-                <div class="slot" data-setup="A" data-index="1">
-                    <div class="slot-label">2号</div>
-                    <div class="content-placeholder"></div>
-                </div>
-                <div class="slot" data-setup="A" data-index="2">
-                    <div class="slot-label">3号</div>
-                    <div class="content-placeholder"></div>
-                </div>
-            </div>
-            <div class="feedback" id="feedback-A"></div>
-            <button class="btn btn-check" onclick="checkSetup('A')">启动实验</button>
-            <button class="btn btn-reset" onclick="resetSetup('A')">清空重置</button>
+    <div class="layout-grid">
+        <div class="chart-section">
+            <canvas id="respirationChart"></canvas>
         </div>
 
-        <div class="experiment-card" id="card-B">
-            <div class="card-header">
-                <div class="card-title">装置乙：无氧呼吸</div>
-                <div class="status-badge" id="status-B">待组装</div>
-            </div>
-            <div class="setup-area">
-                <div class="slot" data-setup="B" data-index="0">
-                    <div class="slot-label">1号</div>
-                    <div class="content-placeholder"></div>
-                </div>
-                <div class="slot" data-setup="B" data-index="1">
-                    <div class="slot-label">2号</div>
-                    <div class="content-placeholder"></div>
+        <div class="control-section">
+            <div class="slider-group">
+                <label>
+                    <span>O₂ 浓度</span>
+                    <span style="color:var(--color-aerobic)"><span id="o2Value">0</span>%</span>
+                </label>
+                <input type="range" id="oxygenSlider" min="0" max="25" step="0.1" value="0">
+                <div style="display:flex; justify-content:space-between; color:#999; font-size:0.8em; margin-top:8px;">
+                    <span>0%</span>
+                    <span>5% (最低)</span>
+                    <span>25%</span>
                 </div>
             </div>
-            <div class="feedback" id="feedback-B"></div>
-            <button class="btn btn-check" onclick="checkSetup('B')">启动实验</button>
-            <button class="btn btn-reset" onclick="resetSetup('B')">清空重置</button>
-        </div>
-    </div>
-</div>
 
-<div class="inventory">
-    <div class="inv-title">实验药品库 (长按拖拽)</div>
-    <div class="draggable-container">
-        <div class="draggable-item" data-type="naoh">
-            <div class="icon-flask"><div class="icon-liquid" style="background:#bae6fd"></div></div>
-            <div class="icon-text">10% NaOH</div>
-        </div>
-        <div class="draggable-item" data-type="yeast">
-            <div class="icon-flask"><div class="icon-liquid" style="background:#fde047"></div></div>
-            <div class="icon-text">酵母菌液</div>
-        </div>
-        <div class="draggable-item" data-type="lime">
-            <div class="icon-flask"><div class="icon-liquid" style="background:#e2e8f0"></div></div>
-            <div class="icon-text">石灰水</div>
+            <div class="bars-container">
+                <div class="bar-row">
+                    <span class="bar-label" style="color:var(--color-anaerobic)">无氧强度</span>
+                    <div class="bar-track"><div id="barAna" class="bar-fill" style="background:var(--color-anaerobic); width:100%"></div></div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label" style="color:var(--color-aerobic)">有氧强度</span>
+                    <div class="bar-track"><div id="barAer" class="bar-fill" style="background:var(--color-aerobic); width:0%"></div></div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label" style="color:var(--color-total)">释放总量</span>
+                    <div class="bar-track"><div id="barTot" class="bar-fill" style="background:var(--color-total); width:50%"></div></div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <span class="info-title" id="stageTitle">初始状态</span>
+                <div id="stageDesc">请缓慢向右拖动滑块，开始实验...</div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    /* ================= 状态管理 ================= */
-    const setups = {
-        A: [null, null, null],
-        B: [null, null]
+    // ================= 1. 数学模型配置 =================
+    // 目标：复现教科书上的标准“对勾”曲线
+    // 特征：
+    // ① 无氧：O₂=0 时起点更高，随后随 O₂ 增加迅速下降，在约 8.5% 处降为 0
+    // ② 有氧：0–10% 保持直线 y = kx；>10% 改为平滑缓慢上升并趋于平台
+    // ③ 总量：总 CO₂ 释放量 = 无氧 + 有氧，最低点仍在 5% O₂
+
+    const MAX_X = 25;
+    const STEP = 0.1;
+    const masterData = [];
+
+    // --- 参数区（可以微调） ---
+    // 无氧曲线：抛物线下降，起点抬高到 4.5，在 8.5% 左右归零
+    const ANA_START = 4.5;  // O₂=0 时无氧 CO₂ 释放相对值
+    const ANA_END   = 8.5;  // 无氧在此 O₂ 浓度后近似为 0
+
+    // 有氧曲线：
+    // 0–10%：y = kx
+    // >10%：从 x=10 处接上一条指数饱和曲线，保证函数值和导数都连续
+    const AER_K  = (2 * ANA_START * (1 - 5 / ANA_END)) / ANA_END; // ≈0.436
+    const AER_X0 = 10;   // 拐点起始：10%
+    const AER_TAU = 5;   // 控制 10% 之后变平的速度（可微调）
+    const AER_BASE_AT_X0 = AER_K * AER_X0;       // 10% 时原直线的数值
+    const AER_B = AER_K * AER_TAU;               // 令导数在 10% 也等于 k
+
+    // 计算函数
+    function calcAnaerobic(x) {
+        if (x >= ANA_END) return 0;
+        // 抛物线下降模型：x=0 时为 ANA_START；x=ANA_END 时为 0
+        return ANA_START * Math.pow((ANA_END - x) / ANA_END, 2);
+    }
+
+    // 0–10% 完全保持原公式；>10% 换成指数饱和且在 10% 处 C¹ 平滑连接
+    function calcAerobic(x) {
+        if (x <= AER_X0) {
+            // 保持旧模型：严格 y = kx
+            return AER_K * x;
+        } else {
+            // 新模型：y = y10 + B * (1 - e^{-(x-10)/tau})
+            // 其中 B = k * tau，所以在 x=10 时导数也为 k
+            const dx = x - AER_X0;
+            return AER_BASE_AT_X0 + AER_B * (1 - Math.exp(-dx / AER_TAU));
+        }
+    }
+
+    // 预生成所有数据点，并顺便统计最大值用于右侧进度条归一化
+    let ANA_MAX = 0, AER_MAX = 0, TOT_MAX = 0;
+
+    for (let x = 0; x <= MAX_X; x += STEP) {
+        let safeX = Math.round(x * 10) / 10;
+
+        let ana = calcAnaerobic(safeX);
+        let aer = calcAerobic(safeX);
+        let tot = ana + aer;
+
+        ANA_MAX = Math.max(ANA_MAX, ana);
+        AER_MAX = Math.max(AER_MAX, aer);
+        TOT_MAX = Math.max(TOT_MAX, tot);
+
+        masterData.push({
+            x: safeX,
+            ana: ana,
+            aer: aer,
+            tot: tot
+        });
+    }
+
+    // ================= 2. 图表初始化 (Chart.js) =================
+    const ctx = document.getElementById('respirationChart').getContext('2d');
+
+    // 自定义插件：动态绘制垂直线和笔头圆点
+    const tracePlugin = {
+        id: 'tracePlugin',
+        afterDraw: (chart) => {
+            const datasets = chart.data.datasets;
+            // 0% 时没有任何数据，不绘制笔头
+            if (datasets[0].data.length === 0) return;
+
+            const lastDataPoint = datasets[0].data[datasets[0].data.length - 1];
+            if (!lastDataPoint) return;
+
+            const xVal = lastDataPoint.x;
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+            const xPos = xScale.getPixelForValue(xVal);
+
+            const ctx = chart.ctx;
+            ctx.save();
+
+            // A. 垂直虚线引导
+            ctx.beginPath();
+            ctx.moveTo(xPos, yScale.top);
+            ctx.lineTo(xPos, yScale.bottom);
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+
+            // B. 三条曲线末端的圆点
+            const colorMap = ['#27ae60', '#2980b9', '#c0392b']; // 绿、蓝、红
+            const idx = datasets[0].data.length - 1;
+
+            datasets.forEach((ds, i) => {
+                if (ds.data.length <= idx) return;
+                const yVal = ds.data[idx].y;
+                const yPos = yScale.getPixelForValue(yVal);
+
+                ctx.beginPath();
+                ctx.arc(xPos, yPos, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = colorMap[i];
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+            });
+
+            ctx.restore();
+        }
     };
 
-    const itemConfig = {
-        'naoh': { name: '10% NaOH', class: 'naoh' },
-        'yeast': { name: '酵母菌液', class: 'yeast' },
-        'lime': { name: '澄清石灰水', class: 'lime' }
-    };
-
-    /* ================= 拖拽逻辑 ================= */
-    let dragItem = null;
-    let dragMirror = null;
-    let currentDroppable = null;
-
-    const draggables = document.querySelectorAll('.draggable-item');
-
-    draggables.forEach(el => {
-        el.addEventListener('touchstart', handleDragStart, {passive: false});
-        el.addEventListener('mousedown', handleDragStart);
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: '无氧呼吸',
+                    data: [],
+                    borderColor: '#27ae60',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
+                },
+                {
+                    label: '有氧呼吸',
+                    data: [],
+                    borderColor: '#2980b9',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false
+                },
+                {
+                    label: 'CO2 释放总量',
+                    data: [],
+                    borderColor: '#c0392b',
+                    borderWidth: 4,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { enabled: false },
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: 0,
+                    max: 25,
+                    title: { display: true, text: 'O₂ 浓度 (%)', font: {size: 14, weight:'bold'} },
+                    grid: { display: false }
+                },
+                y: {
+                    title: { display: true, text: 'CO2 释放相对值', font: {size: 14, weight:'bold'} },
+                    min: 0,
+                    suggestedMax: 7.5,
+                    ticks: { display: false },
+                    grid: { display: true, drawTicks: false }
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { enabled: false }
+            },
+            animation: { duration: 0 }
+        },
+        plugins: [tracePlugin]
     });
 
-    function handleDragStart(e) {
-        e.preventDefault(); 
-        const type = this.dataset.type;
-        const rect = this.getBoundingClientRect();
-        
-        dragMirror = this.cloneNode(true);
-        dragMirror.classList.add('drag-mirror');
-        dragMirror.style.width = (rect.width * 1.1) + 'px';
-        dragMirror.style.height = (rect.height * 1.1) + 'px';
-        document.body.appendChild(dragMirror);
+    // ================= 3. 交互控制逻辑 =================
 
-        dragItem = { type: type };
-        
-        moveMirror(e);
+    const slider = document.getElementById('oxygenSlider');
+    const o2ValueDisplay = document.getElementById('o2Value');
+    const stageTitle = document.getElementById('stageTitle');
+    const stageDesc = document.getElementById('stageDesc');
+    const barAna = document.getElementById('barAna');
+    const barAer = document.getElementById('barAer');
+    const barTot = document.getElementById('barTot');
 
-        document.addEventListener('touchmove', handleDragMove, {passive: false});
-        document.addEventListener('touchend', handleDragEnd);
-        document.addEventListener('mousemove', handleDragMove);
-        document.addEventListener('mouseup', handleDragEnd);
-    }
+    function updateSystem(val) {
+        const currentX = parseFloat(val);
+        o2ValueDisplay.innerText = currentX.toFixed(1);
 
-    function handleDragMove(e) {
-        if (!dragMirror) return;
-        e.preventDefault();
-        moveMirror(e);
-
-        dragMirror.style.display = 'none';
-        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        let elemBelow = document.elementFromPoint(clientX, clientY);
-        dragMirror.style.display = 'flex';
-
-        if (!elemBelow) return;
-
-        let slotBelow = elemBelow.closest('.slot');
-
-        if (currentDroppable !== slotBelow) {
-            if (currentDroppable) currentDroppable.classList.remove('drag-over');
-            currentDroppable = slotBelow;
-            if (currentDroppable) currentDroppable.classList.add('drag-over');
-        }
-    }
-
-    function handleDragEnd(e) {
-        document.removeEventListener('touchmove', handleDragMove);
-        document.removeEventListener('touchend', handleDragEnd);
-        document.removeEventListener('mousemove', handleDragMove);
-        document.removeEventListener('mouseup', handleDragEnd);
-
-        if (currentDroppable && dragItem) {
-            const setupId = currentDroppable.dataset.setup;
-            const index = parseInt(currentDroppable.dataset.index);
-            updateSlot(setupId, index, dragItem.type);
-            currentDroppable.classList.remove('drag-over');
+        // --- A. 更新图表数据 ---
+        let visibleData = [];
+        if (currentX > 0) {
+            visibleData = masterData.filter(p => p.x <= currentX);
         }
 
-        if (dragMirror) {
-            dragMirror.remove();
-            dragMirror = null;
-        }
-        dragItem = null;
-        currentDroppable = null;
-    }
+        chart.data.datasets[0].data = visibleData.map(p => ({x: p.x, y: p.ana}));
+        chart.data.datasets[1].data = visibleData.map(p => ({x: p.x, y: p.aer}));
+        chart.data.datasets[2].data = visibleData.map(p => ({x: p.x, y: p.tot}));
 
-    function moveMirror(e) {
-        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        dragMirror.style.left = (clientX - 50) + 'px'; 
-        dragMirror.style.top = (clientY - 55) + 'px';
-    }
+        chart.update();
 
-    /* ================= 渲染逻辑 ================= */
-    
-    function updateSlot(setupId, index, type) {
-        setups[setupId][index] = type;
-        renderFlask(setupId, index, type);
-        resetFeedback(setupId);
-    }
+        // --- B. 更新右侧面板进度条（按最大值归一化） ---
+        let currentPoint = masterData.find(p => Math.abs(p.x - currentX) < 0.05) || masterData[0];
 
-    // ★★★ 此处已按你的要求修改导管：只去掉乙装置酵母瓶的长导管 ★★★
-    function renderFlask(setupId, index, type) {
-        const slot = document.querySelector(`.slot[data-setup="${setupId}"][data-index="${index}"]`);
-        const placeholder = slot.querySelector('.content-placeholder');
-        
-        if (!type) {
-            placeholder.innerHTML = '';
-            return;
-        }
+        barAna.style.width = (ANA_MAX === 0 ? 0 : currentPoint.ana / ANA_MAX * 100) + '%';
+        barAer.style.width = (AER_MAX === 0 ? 0 : currentPoint.aer / AER_MAX * 100) + '%';
+        barTot.style.width = (TOT_MAX === 0 ? 0 : currentPoint.tot / TOT_MAX * 100) + '%';
 
-        const config = itemConfig[type];
-
-        let tubeHtml = '';
-
-        // 判断：无氧呼吸(装置B) 的 1号位，且内容是酵母菌液
-        const isAnaerobicYeastFlask = (setupId === 'B' && index === 0 && type === 'yeast');
-
-        // 只有在“不是乙装置酵母1号瓶”时，才渲染长导管
-        if (!isAnaerobicYeastFlask) {
-            tubeHtml += '<div class="glass-tube tube-vertical-in"></div>';
-        }
-
-        // 水平连接管，逻辑与原来一致
-        if (setupId === 'A' && index === 0) {
-            // 甲装置 1号瓶：连气泵
-            tubeHtml += '<div class="glass-tube tube-arm-left tube-connect-pump"></div>';
-        } else if (index > 0) {
-            // 其他位置：与前一个瓶连接
-            if (!(setupId === 'B' && index === 0)) {
-                tubeHtml += '<div class="glass-tube tube-arm-left tube-connect-prev"></div>';
-            }
-        }
-
-        // 短导管保留（乙装置酵母瓶只剩这一根 + 连接管）
-        tubeHtml += '<div class="glass-tube tube-vertical-out"></div>';
-        tubeHtml += '<div class="bubble"></div>';
-
-        placeholder.innerHTML = `
-            <div class="flask-wrapper">
-                <div class="flask-rim"></div>
-                <div class="tubes-system">
-                    <div class="stopper"></div>
-                    ${tubeHtml}
-                </div>
-                
-                <div class="flask-body">
-                    <div class="liquid ${config.class}"></div>
-                </div>
-            </div>
-            <div class="flask-label">${config.name}</div>
-        `;
-    }
-
-    function resetSetup(setupId) {
-        setups[setupId] = setups[setupId].map(() => null);
-        const slots = document.querySelectorAll(`.slot[data-setup="${setupId}"]`);
-        slots.forEach(slot => {
-            slot.querySelector('.content-placeholder').innerHTML = '';
-        });
-        resetFeedback(setupId);
-    }
-
-    function resetFeedback(setupId) {
-        const status = document.getElementById(`status-${setupId}`);
-        const feedback = document.getElementById(`feedback-${setupId}`);
-        const card = document.getElementById(`card-${setupId}`);
-        
-        status.innerText = "配置中...";
-        status.style.background = "#f3f4f6";
-        status.style.color = "#666";
-        feedback.style.display = 'none';
-        
-        card.querySelectorAll('.tubes-system').forEach(el => el.classList.remove('visible'));
-        card.querySelectorAll('.liquid.lime').forEach(el => el.classList.remove('cloudy'));
-    }
-
-    /* ================= 核心：详细验证逻辑 ================= */
-
-    function checkSetup(setupId) {
-        const current = setups[setupId];
-        const status = document.getElementById(`status-${setupId}`);
-        const feedback = document.getElementById(`feedback-${setupId}`);
-
-        // 基础检查：是否填满
-        if (current.includes(null)) {
-            showFeedback(feedback, "error", "⚠️ 装置未完成，请填满所有空位。");
-            return;
-        }
-
-        let isCorrect = false;
-        let msg = "";
-
-        if (setupId === 'A') {
-            // 甲装置 (有氧) 判断逻辑
-            if (current[0] === 'naoh' && current[1] === 'yeast' && current[2] === 'lime') {
-                isCorrect = true;
-                msg = "✅ <strong>实验成功！</strong><br>1. 10% NaOH 去除空气CO₂ (防干扰)<br>2. 酵母有氧呼吸产生大量CO₂<br>3. 石灰水变浑浊 (检测结果)";
-            } else {
-                // 错误分支 (按优先级排序)
-                
-                // 1. 根本性错误：没放酵母
-                if (!current.includes('yeast')) {
-                    msg = "❌ <strong>未进行细胞呼吸</strong>：装置中缺少酵母菌，无法进行实验。";
-                }
-                // 2. 1号瓶特殊错误
-                else if (current[0] === 'lime') {
-                    msg = "❌ <strong>错误</strong>：澄清的石灰水不能完全吸收空气中的 CO₂，无法排除干扰。";
-                }
-                else if (current[0] === 'yeast') {
-                    msg = "❌ <strong>错误</strong>：空气直接通入酵母菌液，需用 10% NaOH 去除空气中的 CO₂，排除干扰。";
-                }
-                // 3. 顺序颠倒错误 (NaOH在1号位，但后面顺序错了)
-                else if (current[0] === 'naoh' && current[1] === 'lime' && current[2] === 'yeast') {
-                    msg = "❌ <strong>错误</strong>：细胞呼吸产生的 CO₂ 无法进入澄清的石灰水中（气流方向错误）。";
-                }
-                // 4. 3号瓶检测错误
-                else if (current[2] === 'naoh') {
-                    msg = "❌ <strong>错误</strong>：NaOH 不能用于检测 CO₂，请使用澄清石灰水。";
-                }
-                // 5. 其他兜底错误
-                else {
-                    msg = "❌ <strong>连接错误</strong>：请回顾实验原理（除杂 -> 反应 -> 检测）。";
-                }
-            }
+        // --- C. 教学文案区间划分保持不变（如需，可再细分 10% 之后的一段说明） ---
+        if (currentX === 0) {
+            stageTitle.innerText = "准备阶段";
+            stageDesc.innerHTML = "当前氧气浓度为 0%。此时只有无氧呼吸，CO₂ 释放量较高。请<strong>向右拖动滑块</strong>，观察三条曲线的动态生成过程。";
+        } else if (currentX > 0 && currentX < 4.5) {
+            stageTitle.innerText = "📉 急剧下降 (对勾左翼)";
+            stageDesc.innerHTML = "氧气浓度升高抑制了无氧呼吸，使无氧产生的 CO₂ 急剧下降。此时有氧呼吸虽在增加，但不足以抵消下降，总 CO₂ 仍在<strong>快速减小</strong>。";
+        } else if (currentX >= 4.5 && currentX <= 5.5) {
+            stageTitle.innerText = "🎯 最低点转折 (5%)";
+            stageDesc.innerHTML = "<strong>关键时刻：</strong>红线（总 CO₂）在约 5% 时达到谷底。有氧和无氧两条曲线此时正好“此消彼长”，是果蔬储存的最佳环境。";
+        } else if (currentX > 5.5 && currentX < 10) {
+            stageTitle.innerText = "📈 快速回升 (近似线性)";
+            stageDesc.innerHTML = "无氧呼吸已几乎停止，有氧呼吸随氧气增加呈近似直线的<strong>快速增强</strong>，总 CO₂ 释放量大幅回升。";
         } else {
-            // 乙装置 (无氧) 判断逻辑
-            if (current[0] === 'yeast' && current[1] === 'lime') {
-                isCorrect = true;
-                msg = "✅ <strong>实验成功！</strong><br>1. 酵母菌封口静置 (消耗氧气)<br>2. 产生气体通入石灰水变浑浊<br>说明无氧呼吸也产生 CO₂。";
-            } else {
-                // 错误分支
-                
-                // 1. 根本性错误：没放酵母
-                if (!current.includes('yeast')) {
-                    msg = "❌ <strong>未进行细胞呼吸</strong>：装置中缺少酵母菌。";
-                }
-                // 2. 根本性错误：没放石灰水
-                else if (!current.includes('lime')) {
-                    msg = "❌ <strong>没有检测装置</strong>：缺少澄清石灰水，无法检测产物。";
-                }
-                // 3. 特定错误：2号瓶放了NaOH
-                else if (current[1] === 'naoh') {
-                    msg = "❌ <strong>错误</strong>：NaOH 不能用于检测 CO₂。";
-                }
-                // 4. 特定错误：1号瓶放了NaOH (不需要通气)
-                else if (current[0] === 'naoh') {
-                    msg = "❌ <strong>错误</strong>：无氧呼吸不需通气，故不需要 NaOH。";
-                }
-                // 5. 其他兜底
-                else {
-                    msg = "❌ <strong>连接错误</strong>：请检查无氧呼吸装置顺序。";
-                }
-            }
+            stageTitle.innerText = "🛑 高氧缓慢上升阶段";
+            stageDesc.innerHTML = "当氧气浓度超过 10% 后，有氧呼吸速率虽然继续<strong>缓慢上升</strong>，但由于酶促反应逐渐接近最高速率，曲线在高氧区逐步变得平缓。";
         }
 
-        if (isCorrect) {
-            showFeedback(feedback, "success", msg);
-            status.innerText = "运行中";
-            status.style.background = "#10B981";
-            status.style.color = "white";
-            runAnimation(setupId);
-        } else {
-            showFeedback(feedback, "error", msg);
-            status.innerText = "连接错误";
-            status.style.background = "#EF4444";
-            status.style.color = "white";
-        }
+        if (window.MathJax) MathJax.typesetPromise([stageDesc]);
     }
 
-    function showFeedback(el, type, html) {
-        el.className = `feedback ${type}`;
-        el.innerHTML = html;
-        el.style.display = 'block';
-    }
+    slider.addEventListener('input', (e) => updateSystem(e.target.value));
 
-    function runAnimation(setupId) {
-        const card = document.getElementById(`card-${setupId}`);
-        const tubes = card.querySelectorAll('.tubes-system');
-        
-        tubes.forEach((t, i) => {
-            setTimeout(() => t.classList.add('visible'), i * 300);
-        });
-
-        setTimeout(() => {
-            const liquids = card.querySelectorAll('.liquid');
-            const lastLiquid = liquids[liquids.length - 1];
-            if (lastLiquid.classList.contains('lime')) {
-                lastLiquid.classList.add('cloudy');
-            }
-        }, 2000);
-    }
+    // 初始化
+    updateSystem(0);
 </script>
+
+
+
+
 
 </body>
 </html>
