@@ -1,433 +1,453 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>细胞呼吸动态描绘演示</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <style>
-        :root {
-            --color-anaerobic: #27ae60; /* 绿 */
-            --color-aerobic: #2980b9;   /* 蓝 */
-            --color-total: #c0392b;     /* 红 */
-            --bg-page: #f0f2f5;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>酵母菌呼吸产物检测模拟</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --text-main: #1e293b;
+      --text-sub: #64748b;
+      
+      /* 橙色 (保持不变) */
+      --c-orange: #fed7aa;
+      --c-orange-d: #f97316;
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: var(--bg-page);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            margin: 0;
-            color: #333;
-        }
+      /* 颜色回调：严格按照您提供的第一个文件的颜色 */
+      /* 明显灰绿色 */
+      --c-green-strong-top: #9caea1; 
+      --c-green-strong-bottom: #4b8262;
+      
+      /* 浅灰绿色 */
+      --c-green-weak-top: #d1ddcf;
+      --c-green-weak-bottom: #9fb7a0;
+    }
 
-        .container {
-            max-width: 1100px;
-            width: 100%;
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.08);
-            padding: 30px;
-            box-sizing: border-box;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
 
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
-        p.subtitle { text-align: center; color: #7f8c8d; font-size: 0.9em; margin-bottom: 25px; }
+    body {
+      background: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--text-main);
+    }
 
-        .main-layout {
-            display: flex;
-            gap: 20px;
-        }
+    /* 顶部导航与状态提示 */
+    header {
+      width: 100%;
+      max-width: 800px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-        .chart-wrapper {
-            flex: 2;
-            height: 480px;
-            position: relative;
-            background: #fff;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 10px;
-        }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
 
-        .control-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-        }
+    .status-bar {
+      display: inline-block;
+      background: #e2e8f0;
+      color: var(--text-sub);
+      padding: 10px 24px;
+      border-radius: 99px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
 
-        /* 滑块样式优化 */
-        .slider-container label {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            font-size: 1.2em;
-            margin-bottom: 12px;
-        }
+    .status-bar.active {
+      background: #dbeafe;
+      color: #1d4ed8;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+      transform: scale(1.05);
+    }
 
-        input[type=range] {
-            width: 100%;
-            cursor: pointer;
-            height: 8px;
-            background: #dfe6e9;
-            border-radius: 4px;
-            -webkit-appearance: none;
-            transition: background 0.2s;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 24px;
-            height: 24px;
-            background: var(--color-aerobic);
-            border: 3px solid #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border-radius: 50%;
-            cursor: pointer;
-            margin-top: -8px; /* 校准位置 */
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 8px;
-            cursor: pointer;
-            background: transparent;
-            border-radius: 4px;
-        }
+    /* 摇晃动画 class */
+    .shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
 
-        /* 数据状态条 */
-        .status-bars {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 10px;
-        }
-        .bar-item {
-            display: flex;
-            align-items: center;
-            font-size: 0.9em;
-        }
-        .bar-name { width: 80px; font-weight: 600; }
-        .track { flex: 1; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; }
-        .fill { height: 100%; transition: width 0.1s linear; }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
 
-        /* 教学卡片 */
-        .teach-card {
-            background: #fff;
-            border-left: 5px solid var(--color-total);
-            padding: 15px;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            font-size: 0.95em;
-            line-height: 1.6;
-            margin-top: auto; /* 推到底部 */
-        }
+    /* 主容器 */
+    .lab-bench {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 10px 30px -5px rgba(0,0,0,0.08);
+    }
 
-        @media (max-width: 800px) {
-            .main-layout { flex-direction: column; }
-            .chart-wrapper { height: 350px; }
-        }
-    </style>
+    /* 实验组卡片 */
+    .group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .group-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      background: #cbd5e1;
+      color: #334155;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    /* SVG 仪器容器 */
+    .glassware-row {
+      display: flex;
+      gap: 20px;
+      align-items: flex-end;
+      height: 220px; /* 固定高度确保对齐 */
+    }
+
+    /* 仪器 Wrapper */
+    .flask-wrapper, .tube-wrapper {
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .flask-wrapper:active, .tube-wrapper:active {
+      transform: scale(0.96);
+    }
+
+    /* 交互热区 (不可见，但可点击) */
+    .hotspot {
+      opacity: 0;
+      cursor: pointer;
+      fill: #fff; 
+    }
+    .hotspot:hover {
+      opacity: 0.2; /* 鼠标悬停微亮 */
+    }
+
+    /* 液体颜色 (SVG Gradients) - 动态类 */
+    /* 橙色 */
+    .stop-orange { stop-color: var(--c-orange); transition: stop-color 0.5s; }
+    .stop-orange-d { stop-color: var(--c-orange-d); transition: stop-color 0.5s; }
+    
+    /* 强灰绿 */
+    .stop-green-s { stop-color: var(--c-green-strong-top); }
+    .stop-green-s-d { stop-color: var(--c-green-strong-bottom); }
+    
+    /* 弱灰绿 */
+    .stop-green-w { stop-color: var(--c-green-weak-top); }
+    .stop-green-w-d { stop-color: var(--c-green-weak-bottom); }
+
+    /* 结果反馈 */
+    .result-feedback {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      width: 100%;
+      text-align: center;
+      font-size: 0.9rem;
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: var(--text-sub);
+    }
+    .result-feedback strong {
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* 重置按钮 */
+    .btn-reset {
+      margin-top: 40px;
+      padding: 12px 40px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+      transition: transform 0.1s, background 0.2s;
+    }
+    .btn-reset:active {
+      transform: scale(0.95);
+      background: #1d4ed8;
+    }
+
+    /* 鼠标变成移液管 */
+    body.mode-pipette {
+      cursor: crosshair; 
+    }
+    body.mode-pipette .flask-wrapper,
+    body.mode-pipette .tube-wrapper {
+       cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M5 9l7 7 7-7'/%3E%3C/svg%3E") 12 24, crosshair;
+    }
+
+    /* 响应式适配 */
+    @media (max-width: 768px) {
+      .lab-bench {
+        grid-template-columns: 1fr;
+        padding: 20px;
+        gap: 40px;
+      }
+      .glassware-row {
+        justify-content: center;
+      }
+      h1 { font-size: 1.25rem; }
+    }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>细胞呼吸过程动态模拟</h2>
-    <p class="subtitle">向右拖动滑块，观察随着氧气浓度增加，曲线是如何变化的</p>
+  <header>
+    <h1>酵母菌呼吸产物检测</h1>
+    <div id="statusBar" class="status-bar">点击锥形瓶吸取滤液</div>
+  </header>
 
-    <div class="main-layout">
-        <div class="chart-wrapper">
-            <canvas id="respirationChart"></canvas>
-        </div>
-
-        <div class="control-panel">
-            <div class="slider-container">
-                <label>
-                    <span>O₂ 浓度</span>
-                    <span style="color:var(--color-aerobic)"><span id="o2Display">0</span>%</span>
-                </label>
-                <input type="range" id="o2Slider" min="0" max="25" step="0.1" value="0">
-                <div style="display:flex; justify-content:space-between; color:#999; font-size:0.8em; margin-top:8px;">
-                    <span>0%</span>
-                    <span>5% (最低点)</span>
-                    <span>10%</span>
-                    <span>25%</span>
-                </div>
-            </div>
-
-            <div class="status-bars">
-                <div class="bar-item">
-                    <span class="bar-name" style="color:var(--color-anaerobic)">无氧强度</span>
-                    <div class="track"><div id="barAna" class="fill" style="background:var(--color-anaerobic); width:100%"></div></div>
-                </div>
-                <div class="bar-item">
-                    <span class="bar-name" style="color:var(--color-aerobic)">有氧强度</span>
-                    <div class="track"><div id="barAer" class="fill" style="background:var(--color-aerobic); width:0%"></div></div>
-                </div>
-                <div class="bar-item">
-                    <span class="bar-name" style="color:var(--color-total)">释放总量</span>
-                    <div class="track"><div id="barTot" class="fill" style="background:var(--color-total); width:50%"></div></div>
-                </div>
-            </div>
-
-            <div class="teach-card">
-                <strong id="stageName">初始状态</strong>
-                <div id="stageDesc">请向右拖动滑块，开始实验...</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // ================= 1. 精准数学模型设计 =================
-    // 目标：总曲线最低点精确在 x=5.0
+  <main class="lab-bench">
     
-    // 参数设定：
-    // A (无氧起点) = 2.0
-    // B (有氧系数) = 5.6 (经过微分计算得出，用于平衡下降趋势)
-    // K (米氏常数) = 15 (使得有氧上升较缓，以此在5%处形成谷底)
-
-    const MAX_X = 25;
-    const STEP = 0.1;
-    
-    // 预计算所有数据点（Master Data）
-    const masterData = [];
-
-    function calcAnaerobic(x) {
-        // 无氧呼吸：在10%处归零
-        if(x >= 10) return 0;
-        return 2.0 * Math.pow((10 - x) / 10, 2);
-    }
-
-    function calcAerobic(x) {
-        // 有氧呼吸：米氏方程 V = Vmax * x / (Km + x)
-        // 参数调节以确保 x=5 时斜率与无氧下降斜率抵消
-        const Vmax = 5.6; 
-        const Km = 15;    
-        return (Vmax * x) / (Km + x);
-    }
-
-    for (let x = 0; x <= MAX_X; x += STEP) {
-        // 修正浮点数精度问题
-        let safeX = Math.round(x * 10) / 10;
-        let ana = calcAnaerobic(safeX);
-        let aer = calcAerobic(safeX);
-        
-        masterData.push({
-            x: safeX,
-            ana: ana,
-            aer: aer,
-            tot: ana + aer
-        });
-    }
-
-    // ================= 2. Chart.js 配置 =================
-    const ctx = document.getElementById('respirationChart').getContext('2d');
-
-    // 插件：绘制当前的垂直“笔头”线
-    const tracePlugin = {
-        id: 'tracePlugin',
-        afterDraw: (chart) => {
-            // 如果数据为空（x=0时），不画线
-            const datasets = chart.data.datasets;
-            if (datasets[0].data.length === 0) return;
-
-            // 获取当前绘制数据的最后一个点（即滑块位置）
-            const lastPoint = datasets[0].data[datasets[0].data.length - 1];
-            if (!lastPoint) return;
-
-            const xVal = lastPoint.x;
-            const xScale = chart.scales.x;
-            const yScale = chart.scales.y;
-            const xPos = xScale.getPixelForValue(xVal);
-
-            const ctx = chart.ctx;
-            ctx.save();
-
-            // 绘制垂直引导线
-            ctx.beginPath();
-            ctx.moveTo(xPos, yScale.top);
-            ctx.lineTo(xPos, yScale.bottom);
-            ctx.strokeStyle = '#555';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]);
-            ctx.stroke();
-
-            // 在三个曲线末端画圆点（笔头）
-            const idx = datasets[0].data.length - 1;
+    <div class="group">
+      <div class="group-title"><span class="badge">A</span> 有氧呼吸组</div>
+      
+      <div class="glassware-row">
+        <div class="flask-wrapper" title="有氧培养液">
+          <svg width="100" height="150" viewBox="0 0 100 150">
+            <defs>
+              <linearGradient id="liquid-clear" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.9"/>
+              </linearGradient>
+              <clipPath id="clip-flask-a">
+                <path d="M35,10 L65,10 L65,50 L90,135 Q95,145 80,145 L20,145 Q5,145 10,135 L35,50 Z" />
+              </clipPath>
+            </defs>
             
-            // 辅助函数：画点
-            const drawDot = (datasetIdx, color) => {
-                const ds = datasets[datasetIdx];
-                if(ds.data.length <= idx) return;
-                const val = ds.data[idx].y;
-                const yPos = yScale.getPixelForValue(val);
+            <g clip-path="url(#clip-flask-a)">
+              <rect x="0" y="60" width="100" height="90" fill="url(#liquid-clear)" />
+              <rect class="hotspot" onclick="pick('a-top')" x="0" y="60" width="100" height="40" ><title>吸取上层清液</title></rect>
+              <rect class="hotspot" onclick="pick('a-bottom')" x="0" y="100" width="100" height="50" ><title>吸取底部沉淀</title></rect>
+            </g>
 
-                ctx.beginPath();
-                ctx.arc(xPos, yPos, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = color;
-                ctx.fill();
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            };
+            <path d="M35,10 L65,10 L65,50 L90,135 Q95,145 80,145 L20,145 Q5,145 10,135 L35,50 Z" 
+                  fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="2" />
+            <path d="M38,55 L20,130" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
 
-            drawDot(0, '#27ae60'); // Ana
-            drawDot(1, '#2980b9'); // Aer
-            drawDot(2, '#c0392b'); // Tot
+        <div class="tube-wrapper" onclick="drop('tube-a', 'result-a')" title="点击加入">
+          <svg width="60" height="150" viewBox="0 0 60 150">
+            <defs>
+              <linearGradient id="grad-tube-a" x1="0" y1="0" x2="0" y2="1">
+                <stop class="stop-orange" offset="0%"/>
+                <stop class="stop-orange-d" offset="100%"/>
+              </linearGradient>
+              <clipPath id="clip-tube-a">
+                <path d="M15,20 L45,20 L45,130 Q45,145 30,145 Q15,145 15,130 Z" />
+              </clipPath>
+            </defs>
 
-            // 静态标注 R点 (仅当曲线画过5%后显示)
-            if (xVal >= 5.0) {
-                const minData = masterData.find(p => p.x === 5.0);
-                const rX = xScale.getPixelForValue(5.0);
-                const rY = yScale.getPixelForValue(minData.tot);
-                
-                ctx.font = "bold 12px Arial";
-                ctx.fillStyle = "#c0392b";
-                ctx.textAlign = "center";
-                ctx.fillText("↓ 最低点 (5%)", rX, rY + 25);
-            }
+            <g clip-path="url(#clip-tube-a)">
+              <rect id="liquid-a" x="0" y="100" width="60" height="50" fill="url(#grad-tube-a)" />
+            </g>
 
-            ctx.restore();
-        }
-    };
+            <path d="M15,20 L45,20 L45,130 Q45,145 30,145 Q15,145 15,130 Z" 
+                  fill="rgba(255,255,255,0.2)" stroke="rgba(0,0,0,0.2)" stroke-width="2" />
+            <path d="M20,30 L20,130" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+      </div>
 
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            datasets: [
-                {
-                    label: '无氧呼吸',
-                    data: [], // 初始为空
-                    borderColor: '#27ae60',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.4,
-                    fill: false
-                },
-                {
-                    label: '有氧呼吸',
-                    data: [],
-                    borderColor: '#2980b9',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.2,
-                    fill: false
-                },
-                {
-                    label: 'CO₂ 释放总量',
-                    data: [],
-                    borderColor: '#c0392b',
-                    borderWidth: 4,
-                    pointRadius: 0,
-                    tension: 0.4,
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { enabled: false }, // 禁用鼠标交互，纯展示
-            scales: {
-                x: {
-                    type: 'linear',
-                    min: 0,
-                    max: 25, // 固定X轴范围，防止抖动
-                    title: { display: true, text: 'O₂ 浓度 (%)', font: {size: 14, weight:'bold'} },
-                    grid: { display: false }
-                },
-                y: {
-                    title: { display: true, text: 'CO₂ 释放总量', font: {size: 14, weight:'bold'} },
-                    min: 0,
-                    suggestedMax: 3.5,
-                    ticks: { display: false }, // 隐藏数值
-                    grid: { display: true, drawTicks: false }
-                }
-            },
-            plugins: {
-                legend: { position: 'top' },
-                tooltip: { enabled: false }
-            },
-            animation: { duration: 0 } // 禁用动画以实现实时跟随
-        },
-        plugins: [tracePlugin]
-    });
+      <div class="result-feedback" id="result-a">
+        重铬酸钾溶液<br>待加入...
+      </div>
+    </div>
 
-    // ================= 3. 交互逻辑 =================
-    
-    const slider = document.getElementById('o2Slider');
-    const o2Display = document.getElementById('o2Display');
-    const stageName = document.getElementById('stageName');
-    const stageDesc = document.getElementById('stageDesc');
-    const barAna = document.getElementById('barAna');
-    const barAer = document.getElementById('barAer');
-    const barTot = document.getElementById('barTot');
+    <div class="group">
+      <div class="group-title"><span class="badge">B</span> 无氧呼吸组</div>
+      
+      <div class="glassware-row">
+        <div class="flask-wrapper">
+          <svg width="100" height="150" viewBox="0 0 100 150">
+            <defs>
+              <clipPath id="clip-flask-b">
+                <path d="M35,10 L65,10 L65,50 L90,135 Q95,145 80,145 L20,145 Q5,145 10,135 L35,50 Z" />
+              </clipPath>
+            </defs>
+            
+            <g clip-path="url(#clip-flask-b)">
+              <rect x="0" y="60" width="100" height="90" fill="url(#liquid-clear)" />
+              <rect class="hotspot" onclick="pick('b-all')" x="0" y="60" width="100" height="90" ><title>吸取培养液</title></rect>
+            </g>
 
-    function updateChart(val) {
-        const currentX = parseFloat(val);
-        o2Display.innerText = currentX.toFixed(1);
+            <path d="M35,10 L65,10 L65,50 L90,135 Q95,145 80,145 L20,145 Q5,145 10,135 L35,50 Z" 
+                  fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="2" />
+            <path d="M38,55 L20,130" stroke="rgba(255,255,255,0.6)" stroke-width="3" stroke-linecap="round" fill="none"/>
+            
+            </svg>
+        </div>
 
-        // 1. 数据截取 (Slicing)
-        // 过滤出所有 x <= currentX 的点
-        // 如果 currentX == 0, 数组应该为空（除了起始点? 用户要求无曲线，所以给空数组）
-        
-        let visibleData = [];
-        if (currentX > 0) {
-            visibleData = masterData.filter(p => p.x <= currentX);
-        } else {
-            // 0%时，显示为空，或者只显示一个点？
-            // 为了符合"无曲线"的要求，给空数组。
-            // 但为了进度条显示，我们需要获取x=0的数值
-            visibleData = [];
-        }
+        <div class="tube-wrapper" onclick="drop('tube-b', 'result-b')" title="点击加入">
+          <svg width="60" height="150" viewBox="0 0 60 150">
+            <defs>
+              <linearGradient id="grad-tube-b" x1="0" y1="0" x2="0" y2="1">
+                <stop class="stop-orange" offset="0%"/>
+                <stop class="stop-orange-d" offset="100%"/>
+              </linearGradient>
+              <clipPath id="clip-tube-b">
+                <path d="M15,20 L45,20 L45,130 Q45,145 30,145 Q15,145 15,130 Z" />
+              </clipPath>
+            </defs>
 
-        // 更新 Chart 数据
-        chart.data.datasets[0].data = visibleData.map(p => ({x: p.x, y: p.ana}));
-        chart.data.datasets[1].data = visibleData.map(p => ({x: p.x, y: p.aer}));
-        chart.data.datasets[2].data = visibleData.map(p => ({x: p.x, y: p.tot}));
-        
-        chart.update();
+            <g clip-path="url(#clip-tube-b)">
+              <rect id="liquid-b" x="0" y="100" width="60" height="50" fill="url(#grad-tube-b)" />
+            </g>
 
-        // 2. 更新右侧面板数值 (取当前X对应的值)
-        // 如果是0，取masterData第一个点
-        let currentPoint = masterData.find(p => Math.abs(p.x - currentX) < 0.05) || masterData[0];
-        
-        // 更新进度条 (归一化显示)
-        barAna.style.width = (currentPoint.ana / 2.0 * 100) + '%';
-        barAer.style.width = (currentPoint.aer / 3.5 * 100) + '%';
-        barTot.style.width = (currentPoint.tot / 3.5 * 100) + '%';
+            <path d="M15,20 L45,20 L45,130 Q45,145 30,145 Q15,145 15,130 Z" 
+                  fill="rgba(255,255,255,0.2)" stroke="rgba(0,0,0,0.2)" stroke-width="2" />
+            <path d="M20,30 L20,130" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+      </div>
 
-        // 3. 教学文案更新
-        if (currentX === 0) {
-            stageName.innerText = "准备开始";
-            stageDesc.innerHTML = "当前氧气为0。请<strong>向右拖动滑块</strong>，观察曲线如何产生。";
-        } else if (currentX > 0 && currentX < 4) {
-            stageName.innerText = "无氧呼吸受抑";
-            stageDesc.innerHTML = "随着氧气介入，绿色曲线(无氧)急剧下跌。虽然蓝色曲线(有氧)开始生长，但总释放量(红线)在<strong>下降</strong>。";
-        } else if (currentX >= 4 && currentX <= 6) {
-            stageName.innerText = "最低点 (5%)";
-            stageDesc.innerHTML = "注意红线的<strong>谷底</strong>。此时总 CO₂ 释放量最低。这是果蔬储存的最佳氧浓度。";
-        } else if (currentX > 6 && currentX < 15) {
-            stageName.innerText = "有氧呼吸增强";
-            stageDesc.innerHTML = "绿线归零。蓝线和红线同步上升，表明细胞呼吸强度随氧气增加而恢复。";
-        } else {
-            stageName.innerText = "酶饱和阶段";
-            stageDesc.innerHTML = "曲线趋向平直。受限于呼吸酶数量，反应速率达到上限，不再随氧气增加而大幅上升。";
-        }
+      <div class="result-feedback" id="result-b">
+        重铬酸钾溶液<br>待加入...
+      </div>
+    </div>
+
+  </main>
+
+  <button class="btn-reset" onclick="resetAll()">重置实验</button>
+
+  <script>
+    // 全局状态
+    let currentPipette = null; // 存储当前吸取的内容: 'a-top', 'a-bottom', 'b-all'
+    const statusEl = document.getElementById('statusBar');
+    const bodyEl = document.body;
+
+    // 1. 吸取操作
+    function pick(type) {
+      currentPipette = type;
+      
+      // 视觉反馈
+      bodyEl.classList.add('mode-pipette');
+      statusEl.classList.add('active');
+      
+      let msg = "";
+      if(type === 'a-top') msg = "已吸取：A瓶上层清液";
+      else if(type === 'a-bottom') msg = "已吸取：A瓶底层沉淀";
+      else if(type === 'b-all') msg = "已吸取：B瓶培养液";
+      
+      statusEl.innerText = `${msg} -> 请点击试管滴加`;
     }
 
-    slider.addEventListener('input', (e) => updateChart(e.target.value));
-    
-    // 初始化：确保开始时没有线
-    updateChart(0);
+    // 2. 滴加操作
+    function drop(tubeId, resultId) {
+      // 如果还没吸取
+      if (!currentPipette) {
+        statusEl.classList.add('shake');
+        setTimeout(() => statusEl.classList.remove('shake'), 400);
+        statusEl.innerText = "请先点击锥形瓶吸取液体！";
+        return;
+      }
 
-</script>
+      const stops = document.querySelectorAll(`#grad-${tubeId} stop`);
+      const resultBox = document.getElementById(resultId);
+      const liquidRect = document.getElementById(tubeId === 'tube-a' ? 'liquid-a' : 'liquid-b');
+
+      // 移除旧颜色类
+      stops.forEach(s => s.className.baseVal = "");
+
+      // 根据吸取内容判断结果
+      if (currentPipette === 'b-all') {
+        // 无氧：强灰绿色
+        stops[0].classList.add('stop-green-s');
+        stops[1].classList.add('stop-green-s-d');
+        // 去除原因解释
+        resultBox.innerHTML = "<strong>明显灰绿色</strong>";
+      } else if (currentPipette === 'a-top') {
+        // 有氧上层：无反应
+        stops[0].classList.add('stop-orange');
+        stops[1].classList.add('stop-orange-d');
+        resultBox.innerHTML = "<strong>橙色</strong>";
+      } else if (currentPipette === 'a-bottom') {
+        // 有氧底层：弱灰绿色
+        stops[0].classList.add('stop-green-w');
+        stops[1].classList.add('stop-green-w-d');
+        // 去除原因解释
+        resultBox.innerHTML = "<strong>浅灰绿色</strong>";
+      }
+
+      // 液面上升动画
+      liquidRect.setAttribute('y', '80');
+      setTimeout(() => liquidRect.setAttribute('y', '90'), 300);
+
+      // 重置状态
+      currentPipette = null;
+      bodyEl.classList.remove('mode-pipette');
+      statusEl.classList.remove('active');
+      statusEl.innerText = "操作完成。可继续实验。";
+    }
+
+    // 3. 重置
+    function resetAll() {
+      // 恢复颜色
+      ['grad-tube-a', 'grad-tube-b'].forEach(id => {
+        const stops = document.querySelectorAll(`#${id} stop`);
+        stops.forEach(s => s.className.baseVal = "");
+        stops[0].classList.add('stop-orange');
+        stops[1].classList.add('stop-orange-d');
+      });
+
+      // 恢复液面
+      document.getElementById('liquid-a').setAttribute('y', '100');
+      document.getElementById('liquid-b').setAttribute('y', '100');
+
+      // 恢复文字
+      document.getElementById('result-a').innerHTML = "重铬酸钾溶液<br>待加入...";
+      document.getElementById('result-b').innerHTML = "重铬酸钾溶液<br>待加入...";
+
+      // 恢复状态
+      currentPipette = null;
+      bodyEl.classList.remove('mode-pipette');
+      statusEl.classList.remove('active');
+      statusEl.innerText = "点击锥形瓶吸取滤液";
+    }
+  </script>
 </body>
 </html>
